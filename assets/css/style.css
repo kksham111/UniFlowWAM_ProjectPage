@@ -205,7 +205,6 @@ a.btn:hover { background: var(--ink); color: var(--paper); }
 .facts { font-family: var(--sans); font-weight: 500; font-size: 14px; color: var(--faint); margin: 24px 0 0; max-width: 80ch; }
 
 /* ============================ Role grid（签名交互） ============================ */
-.section-grid { background: var(--mist); }
 .grid-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .chip {
   font-family: var(--sans); font-weight: 600; font-size: 14px;
@@ -235,7 +234,7 @@ a.btn:hover { background: var(--ink); color: var(--paper); }
   background: transparent; cursor: pointer; text-align: center; color: inherit; font: inherit;
   transition: opacity .2s, background-color .2s, border-color .2s;
 }
-.obj:hover { background: rgba(255, 255, 255, .7); }
+.obj:hover { background: var(--mist); }
 .obj.is-active { background: var(--paper); border-color: var(--ink); }
 .role-grid.is-deploy .obj:not(.is-active) { opacity: .28; }
 .obj-head { display: flex; flex-direction: column; justify-content: flex-end; gap: 3px; padding-top: 8px; }
@@ -258,7 +257,7 @@ a.btn:hover { background: var(--ink); color: var(--paper); }
 .lg-absent { background: var(--paper); box-shadow: inset 0 0 0 1.5px #cdd3da; }
 
 .objective-detail {
-  margin-top: 28px; background: var(--paper); border-radius: 10px; padding: clamp(20px, 3vw, 32px);
+  margin-top: 28px; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 10px; padding: clamp(20px, 3vw, 32px);
   display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 12px clamp(24px, 4vw, 48px); align-items: start;
 }
 .detail-num { font-family: var(--sans); font-weight: 700; font-size: 13px; color: var(--faint); letter-spacing: .04em; text-transform: uppercase; }
