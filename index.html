@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniFlowWAM: A Unified World–Action Model with Visual Semantics and 4D Geometry</title>
+  <meta name="description" content="UniFlowWAM makes scene-level 3D flow a third modality of a world–action model, next to actions and future visual features, inside one diffusion transformer trained with ten role-conditioned objectives. It deploys as a direct policy that needs no flow at test time.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="UniFlowWAM: A Unified World–Action Model with Visual Semantics and 4D Geometry">
+  <meta property="og:description" content="Actions, future visual features and scene-level 3D flow as three co-equal modalities of one diffusion transformer, trained with a ten-objective role grid.">
+  <meta property="og:image" content="https://kksham111.github.io/UniFlowWAM_ProjectPage/assets/img/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/figtree-extrabold.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<a class="skip" href="#idea">Skip to content</a>
+
+<!-- ============================ Navigation ============================ -->
+<nav class="nav" aria-label="Sections">
+  <div class="nav-inner">
+    <a class="nav-brand" href="#top">UniFlowWAM</a>
+    <ul class="nav-links">
+      <li><a href="#idea">Idea</a></li>
+      <li><a href="#model">Model</a></li>
+      <li><a href="#objectives">Objectives</a></li>
+      <li><a href="#simulation">Simulation</a></li>
+      <li><a href="#real-robot">Real robot</a></li>
+      <li><a href="#generalization">Generalization</a></li>
+      <li><a href="#ablation">Ablation</a></li>
+      <li><a href="#cite">Cite</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ============================ Hero ============================ -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <h1 class="title">UniFlowWAM</h1>
+    <p class="subtitle"><span>A Unified World–Action Model</span> <span>with Visual Semantics and 4D Geometry</span></p>
+
+    <ul class="modality-key" aria-label="Modalities">
+      <li class="mod-v"><i>v</i> future visual features</li>
+      <li class="mod-m"><i>m</i> scene-level 3D flow</li>
+      <li class="mod-a"><i>a</i> actions</li>
+    </ul>
+
+    <p class="authors">
+      <span>Jialin Tian<sup>1,2,*</sup></span>
+      <span>Zhuofan Li<sup>1,3,*</sup></span>
+      <span>Xinkai Wang<sup>2,3</sup></span>
+      <span>Bokai Lin<sup>1,2,3</sup></span>
+      <span>Chenyi Wang<sup>2</sup></span>
+      <span>Xinyu Zhan<sup>1</sup></span>
+      <span>Cewu Lu<sup>1,2,3</sup></span>
+      <span>Lixin Yang<sup>1,2,3,✉</sup></span>
+    </p>
+    <p class="affiliations">
+      <span><sup>1</sup>MVIG@SJTU</span>
+      <span><sup>2</sup>Shanghai Innovation Institute</span>
+      <span><sup>3</sup>Noematrix</span>
+      <span class="aff-note"><sup>*</sup>Equal contribution · <sup>✉</sup>Corresponding author</span>
+    </p>
+
+    <div class="logos" aria-label="Affiliations">
+      <span class="wordmark" aria-label="MVIG at SJTU"><b>MVIG</b>@SJTU</span>
+      <span class="logo-sep" aria-hidden="true"></span>
+      <img src="assets/logo/sii.svg" alt="Shanghai Innovation Institute" class="logo-sii">
+      <span class="logo-sep" aria-hidden="true"></span>
+      <img src="assets/logo/noematrix.png" alt="Noematrix" class="logo-noematrix">
+    </div>
+
+    <div class="links">
+      <span class="btn is-pending" aria-disabled="true">Paper <em>coming soon</em></span>
+      <span class="btn is-pending" aria-disabled="true">Code <em>coming soon</em></span>
+      <a class="btn" href="#cite">BibTeX</a>
+    </div>
+  </div>
+
+  <div class="wrap wide">
+    <dl class="headline-numbers">
+      <div>
+        <dt>RoboCasa-GR1</dt>
+        <dd><span class="num">58.9<small>%</small></span><span class="sub">best single evaluation; 56.4% mean over 11 seeds, from 52.1% for <span class="nowrap">LDA-1B</span></span></dd>
+      </div>
+      <div>
+        <dt>LIBERO-Plus, zero-shot</dt>
+        <dd><span class="num">87.7<small>%</small></span><span class="sub">seven perturbation types, trained on LIBERO only; 98.1% in-distribution</span></dd>
+      </div>
+      <div>
+        <dt>Real robot, four bimanual tasks</dt>
+        <dd><span class="num">87.0<small>%</small></span><span class="sub">average success; π<sub>0.5</sub>, the strongest baseline, 68.5%</span></dd>
+      </div>
+    </dl>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================ Idea ============================ -->
+<section class="section" id="idea">
+  <div class="wrap">
+    <h2 class="headline">Actions say what the robot did. <span>Flow shows how the scene moved.</span></h2>
+  </div>
+  <div class="wrap split split-idea">
+    <div class="prose">
+      <p class="lead">Scene-level 3D flow tracks where every point of the scene goes in 3D. UniFlowWAM learns it as a third modality next to vision and action, yet deploys as a direct policy that needs no flow.</p>
+      <details class="abstract">
+        <summary>Read the abstract</summary>
+        <p>Robot demonstrations record what the robot saw and what it did. They do not specify how the 3D world changed in between. Scene-level 3D flow describes this motion by tracking 3D scene points over time, providing the world representation with 4D geometry. Prior work has used flow to improve robot policies. Flow served as an intermediate prediction that a separate model converts into actions, as a prior injected at inference time, or as an extra output learned together with the action. In all of these designs, flow stays outside the policy, as a separate module or as an extra prediction head. No single model both predicts flow and conditions on it together with future images and actions.</p>
+        <p>We introduce UniFlowWAM, a Unified World–Action Model that makes 3D scene flow a third modality on par with vision and action. Its world representation therefore covers both future visual features and scene geometry, and flow receives its own supervision. UniFlowWAM is a diffusion transformer with one expert per modality, and the three experts exchange information through joint attention. We train UniFlowWAM under a ten-objective role grid, where each objective assigns every modality exactly one of three roles, namely target, condition, or absent.</p>
+        <p>We evaluate UniFlowWAM on RoboCasa-GR1, LIBERO, and LIBERO-Plus in simulation, and on four real-world bimanual manipulation tasks. On RoboCasa-GR1, UniFlowWAM raises the success rate of its base model without flow from 52.1% to 56.4%. It preserves in-distribution success on LIBERO at 98.1% and reaches 87.7% zero-shot on LIBERO-Plus. On the real robot, it achieves 87.0% average success, compared with 68.5% for the strongest baseline.</p>
+      </details>
+    </div>
+    <figure class="figure">
+      <img src="assets/img/flow-scene.jpg" alt="Scene flow trajectories drawn over a robot gripper moving above two pens next to an open drawer" loading="lazy" width="1600" height="1200">
+      <figcaption>Scene-level 3D flow on a pen-and-drawer demonstration, blue to red over the action horizon. Extracted with Track4World from the same RGB videos used for training, no depth sensor needed.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================ Model ============================ -->
+<section class="section" id="model">
+  <div class="wrap">
+    <h2 class="headline">Three modalities. <span>One diffusion transformer.</span></h2>
+    <p class="lead">A diffusion transformer with one expert per modality; the three experts meet only in joint self-attention. The instruction and the current frame enter through <span class="nowrap">Qwen3-VL-4B</span>, which every expert reads by cross-attention.</p>
+  </div>
+  <div class="wrap wide">
+    <figure class="figure figure-wide">
+      <a href="assets/img/pipeline.jpg" class="zoom"><img src="assets/img/pipeline.jpg" alt="UniFlowWAM architecture: current and future observations, point map and scene flow, and proprioception with action chunks are encoded and fed to a three-expert MM-DiT with joint self-attention" loading="lazy" width="2400" height="1366"></a>
+      <figcaption>Select the figure to enlarge.</figcaption>
+    </figure>
+  </div>
+  <div class="wrap wide">
+    <p class="facts">Mid-trained on 214,443 episodes from ten embodiments, then post-trained per benchmark.</p>
+  </div>
+</section>
+
+<!-- ============================ Objectives (interactive grid) ============================ -->
+<section class="section section-grid" id="objectives">
+  <div class="wrap">
+    <h2 class="headline">Ten objectives. <span>What makes the model unified.</span></h2>
+    <p class="lead">In each objective, every modality is either a <b>target</b>, a <b>condition</b>, or an absent <b>placeholder</b>. Each modality is a target in some objectives and a condition in others. Select an objective to see what it asks.</p>
+  </div>
+
+  <div class="wrap wide">
+    <div class="grid-modes" role="group" aria-label="Grid view">
+      <button type="button" class="chip is-on" data-mode="train" aria-pressed="true">Training: one objective per sample</button>
+      <button type="button" class="chip" data-mode="deploy" aria-pressed="false">Deployment: policy only</button>
+    </div>
+
+    <p class="scroll-hint">Scroll sideways to see all ten objectives.</p>
+    <div class="role-grid-scroll">
+      <div class="role-grid" id="role-grid" role="group" aria-label="Ten training objectives">
+        <!-- 由 main.js 按 OBJECTIVES 生成 -->
+      </div>
+    </div>
+
+    <div class="grid-legend" aria-hidden="true">
+      <span><i class="lg lg-target"></i>Target: noised input, supervised output</span>
+      <span><i class="lg lg-cond"></i>Condition: clean input</span>
+      <span><i class="lg lg-absent"></i>Absent: learned placeholder</span>
+    </div>
+
+    <div class="objective-detail" id="objective-detail" aria-live="polite">
+      <!-- 由 main.js 填充 -->
+    </div>
+  </div>
+</section>
+
+<!-- ============================ Simulation ============================ -->
+<section class="section" id="simulation">
+  <div class="wrap">
+    <h2 class="headline">Simulation. <span>Gains where the base is weakest.</span></h2>
+  </div>
+  <div class="wrap wide sim-stack">
+    <div class="table-block">
+      <h3 class="table-title">RoboCasa-GR1, 24 humanoid tabletop tasks</h3>
+      <p class="table-note">Success rate (%). The gain concentrates on the hard tasks: on the 10 tasks where released <span class="nowrap">LDA-1B</span> scores below 50%, UniFlowWAM improves all 10, by 6.5 points on average.</p>
+      <div class="table-pair">
+        <div class="table-scroll">
+          <table class="data"><thead><tr><th scope="col">Published results</th><th scope="col" class="n">SR</th></tr></thead><tbody>
+            <tr><td>UWM</td><td class="n">14.2</td></tr>
+            <tr><td>GR00T-N1.6</td><td class="n">47.6</td></tr>
+            <tr><td>StarVLA</td><td class="n">47.8</td></tr>
+            <tr><td>Being-H0.7</td><td class="n">49.2</td></tr>
+            <tr><td>FLARE</td><td class="n">55.0</td></tr>
+            <tr><td>LDA-1B</td><td class="n">55.4</td></tr>
+            <tr class="ours"><td>UniFlowWAM<sup>†</sup></td><td class="n"><u>58.9</u></td></tr>
+            <tr><td>OpenWAM-α</td><td class="n"><b>60.5</b></td></tr>
+          </tbody></table>
+        </div>
+        <div class="table-scroll">
+          <table class="data"><thead><tr><th scope="col">Repeated evaluation, seeds 0–10</th><th scope="col" class="n">Mean ± SD</th></tr></thead><tbody>
+            <tr><td>LDA-1B, released</td><td class="n">52.11 ± 2.24</td></tr>
+            <tr><td>LDA-1B, reproduced</td><td class="n">52.76 ± 1.16</td></tr>
+            <tr class="ours"><td>UniFlowWAM without mid-training</td><td class="n"><u>54.84 ± 1.00</u></td></tr>
+            <tr class="ours"><td>UniFlowWAM with mid-training</td><td class="n"><b>56.38 ± 1.47</b></td></tr>
+          </tbody></table>
+          <p class="table-foot"><sup>†</sup>Best of seeds 0–10; published results are single evaluations. Bold is best and underline second best within each block.</p>
+        </div>
+      </div>
+    </div>
+    <div class="table-block">
+      <h3 class="table-title">LIBERO and zero-shot LIBERO-Plus</h3>
+      <p class="table-note">Success rate (%). Post-trained on LIBERO only, then evaluated on LIBERO-Plus without adaptation. The widest margin is under camera perturbations.</p>
+      <div class="table-scroll">
+        <table class="data data-wide">
+          <thead>
+            <tr><th scope="col">Model</th><th scope="col" class="n">LIBERO</th><th scope="colgroup" colspan="8" class="group">LIBERO-Plus</th></tr>
+            <tr><th aria-hidden="true"></th><th aria-hidden="true"></th><th scope="col" class="n">Cam.</th><th scope="col" class="n">Robot</th><th scope="col" class="n">Lang.</th><th scope="col" class="n">Light</th><th scope="col" class="n">Bg.</th><th scope="col" class="n">Noise</th><th scope="col" class="n">Layout</th><th scope="col" class="n">Total</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>OpenVLA-OFT</td><td class="n">97.1</td><td class="n">56.4</td><td class="n">31.9</td><td class="n">79.5</td><td class="n">88.7</td><td class="n">93.3</td><td class="n">75.8</td><td class="n">74.2</td><td class="n">69.6</td></tr>
+            <tr><td>π<sub>0.5</sub></td><td class="n">96.9</td><td class="n">72.2</td><td class="n"><b>76.8</b></td><td class="n">85.1</td><td class="n">96.2</td><td class="n">95.5</td><td class="n">87.0</td><td class="n"><b>86.9</b></td><td class="n"><u>84.7</u></td></tr>
+            <tr><td>StarVLA-α</td><td class="n">–</td><td class="n">48.7</td><td class="n">63.4</td><td class="n">86.8</td><td class="n">95.8</td><td class="n">94.6</td><td class="n">75.0</td><td class="n">80.2</td><td class="n">77.8</td></tr>
+            <tr><td>Fast-WAM</td><td class="n">97.6</td><td class="n">40.0</td><td class="n">65.3</td><td class="n">68.8</td><td class="n">91.4</td><td class="n">58.2</td><td class="n">63.8</td><td class="n">75.5</td><td class="n">65.3</td></tr>
+            <tr><td>4D-WAM</td><td class="n"><u>98.6</u></td><td class="n">45.2</td><td class="n">64.3</td><td class="n"><b>90.6</b></td><td class="n">94.3</td><td class="n">57.7</td><td class="n">69.1</td><td class="n">79.2</td><td class="n">71.0</td></tr>
+            <tr><td>FLEX-π</td><td class="n">98.5</td><td class="n">73.7</td><td class="n">53.1</td><td class="n">84.3</td><td class="n">91.9</td><td class="n">93.8</td><td class="n"><u>93.4</u></td><td class="n"><u>82.9</u></td><td class="n">80.9</td></tr>
+            <tr><td>OpenWAM-α</td><td class="n"><b>99.3</b></td><td class="n">33.8</td><td class="n"><u>76.1</u></td><td class="n">88.0</td><td class="n"><u>97.0</u></td><td class="n">87.1</td><td class="n">39.8</td><td class="n">77.5</td><td class="n">69.2</td></tr>
+            <tr><td>LaMP</td><td class="n">98.3</td><td class="n">64.5</td><td class="n">69.6</td><td class="n"><u>88.2</u></td><td class="n">95.3</td><td class="n"><b>97.4</b></td><td class="n">76.9</td><td class="n">73.8</td><td class="n">79.3</td></tr>
+            <tr><td>Track4Action</td><td class="n">97.0</td><td class="n"><u>76.6</u></td><td class="n">60.7</td><td class="n">87.1</td><td class="n">96.3</td><td class="n"><u>96.1</u></td><td class="n">88.4</td><td class="n">78.7</td><td class="n">82.3</td></tr>
+            <tr><td>LDA-1B</td><td class="n">92.8</td><td class="n">33.1</td><td class="n">71.2</td><td class="n">76.0</td><td class="n">89.9</td><td class="n">91.1</td><td class="n">72.0</td><td class="n">66.2</td><td class="n">69.5</td></tr>
+            <tr class="ours"><td>UniFlowWAM (ours)</td><td class="n">98.1</td><td class="n"><b>96.9</b></td><td class="n">66.0</td><td class="n">87.4</td><td class="n"><b>98.0</b></td><td class="n">87.3</td><td class="n"><b>98.1</b></td><td class="n">81.7</td><td class="n"><b>87.7</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-foot">Bold is best and underline second best in each column. Leading methods score 97–99% on LIBERO, so it is reported only to verify that in-distribution success is preserved.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ Real robot ============================ -->
+<section class="section" id="real-robot">
+  <div class="wrap wide real-grid">
+    <div class="real-head">
+      <h2 class="headline">Four bimanual tasks. <span>Strongest policy on every one.</span></h2>
+      <p class="lead">An ALOHA-style platform with two 6-DoF arms. Four tasks that ask different things of the two arms; 50 demonstrations each, 50 trials per policy.</p>
+    </div>
+    <div class="chart-block real-summary">
+      <h3 class="chart-title">Success rate and process score</h3>
+      <p class="chart-key"><span class="key-item"><span class="key-solid"></span>Success rate (%)</span><span class="key-item"><span class="key-light"></span>Process score: share of milestones completed</span></p>
+    </div>
+
+    <figure class="task-strip"><img src="assets/img/tasks-cabbage.jpg" alt="Cabbage: grasp the cabbage, place it into the pot, grasp the lid by its knob, cover the pot" loading="lazy" width="1600" height="394"></figure>
+    <div class="task-bars"><div class="bars" data-bars="Cabbage"></div></div>
+    <figure class="task-strip"><img src="assets/img/tasks-chili.jpg" alt="Chili: grasp the green chili and place it on the plate, then the red chili" loading="lazy" width="1600" height="396"></figure>
+    <div class="task-bars"><div class="bars" data-bars="Chili"></div></div>
+    <figure class="task-strip"><img src="assets/img/tasks-pen.jpg" alt="Pen: pick up and place two pens into the drawer, hold the drawer unit steady, push the drawer closed" loading="lazy" width="1600" height="392"></figure>
+    <div class="task-bars"><div class="bars" data-bars="Pen"></div></div>
+    <figure class="task-strip"><img src="assets/img/tasks-towel.jpg" alt="Towel: grasp opposite edge midpoints, lift, lower to fold in half, grasp a corner, fold into a quarter-sized towel" loading="lazy" width="1600" height="420"></figure>
+    <div class="task-bars"><div class="bars" data-bars="Towel"></div></div>
+
+    <p class="task-caption">Instructions and scored milestones of the four tasks.</p>
+    <div class="task-bars task-average">
+      <div class="bars" data-bars="Average"></div>
+      <details class="table-view">
+        <summary>Show as a table</summary>
+        <div class="table-scroll" id="real-table"></div>
+      </details>
+    </div>
+  </div>
+
+  <div class="wrap wide">
+    <h3 class="sub-headline">Rollouts</h3>
+    <div class="video-grid">
+      <figure class="figure"><div class="video-slot ratio-16x9" data-video="assets/video/rollouts-chili.mp4" data-poster="assets/video/rollouts-chili.jpg" data-controls="true" data-label="Chili transfer rollouts at 3x speed"></div></figure>
+      <figure class="figure"><div class="video-slot ratio-16x9" data-video="assets/video/rollouts-cabbage.mp4" data-poster="assets/video/rollouts-cabbage.jpg" data-controls="true" data-label="Cabbage transfer rollouts at 3x speed"></div></figure>
+      <figure class="figure"><div class="video-slot ratio-16x9" data-video="assets/video/rollouts-pen.mp4" data-poster="assets/video/rollouts-pen.jpg" data-controls="true" data-label="Pen manipulation rollouts at 3x speed"></div></figure>
+      <figure class="figure"><div class="video-slot ratio-16x9" data-video="assets/video/rollouts-towel.mp4" data-poster="assets/video/rollouts-towel.jpg" data-controls="true" data-label="Towel folding rollouts at 3x speed"></div></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ Generalization ============================ -->
+<section class="section" id="generalization">
+  <div class="wrap">
+    <h2 class="headline">Trained on one green towel. <span>Folds what it has never seen.</span></h2>
+    <p class="lead"><b>Out-of-distribution test.</b> All 50 towel demonstrations use one green towel, laid flat at varying positions across the table, long edge toward the robot, give or take a small rotation. We step outside that range in two directions: how the towel is placed, and the towel itself. Success is less frequent than in distribution, but the policy still completes the folds.</p>
+  </div>
+  <div class="wrap wide">
+    <h3 class="sub-headline">Placement</h3>
+    <div class="video-grid cols-4">
+      <figure class="figure"><div class="video-slot ratio-4x3" data-video="assets/video/ood-vertical-a.mp4" data-poster="assets/video/ood-vertical-a.jpg" data-label="Green towel placed vertically, episode 1, 3x"></div></figure>
+      <figure class="figure"><div class="video-slot ratio-4x3" data-video="assets/video/ood-vertical-b.mp4" data-poster="assets/video/ood-vertical-b.jpg" data-label="Green towel placed vertically, episode 2, 3x"></div></figure>
+      <p class="grid-note"><b>Vertical.</b> The training towel turned 90°, short edge toward the robot, so the grasp points and the fold direction are new. Two episodes, both folded without human help.</p>
+    </div>
+
+    <h3 class="sub-headline sub-headline-gap">A different towel</h3>
+    <div class="video-grid cols-4">
+      <figure class="figure"><div class="video-slot ratio-4x3" data-video="assets/video/ood-beige.mp4" data-poster="assets/video/ood-beige.jpg" data-label="Beige towel, 3x"></div><figcaption><b>Color.</b> The same type of towel in a different color, beige.</figcaption></figure>
+      <figure class="figure"><div class="video-slot ratio-4x3" data-video="assets/video/ood-yellow.mp4" data-poster="assets/video/ood-yellow.jpg" data-label="Yellow towel, 3x"></div><figcaption><b>Texture.</b> A thinner towel, also in a different color, yellow.</figcaption></figure>
+      <figure class="figure"><div class="video-slot ratio-4x3" data-video="assets/video/ood-white.mp4" data-poster="assets/video/ood-white.jpg" data-label="Small white cloth, 3x"></div><figcaption><b>Size.</b> A small white cloth on a white tablecloth.</figcaption></figure>
+      <figure class="figure"><div class="video-slot ratio-4x3" data-video="assets/video/ood-purple.mp4" data-poster="assets/video/ood-purple.jpg" data-label="Small purple plush towel, 3x"></div><figcaption><b>Softness.</b> Much softer plush, also smaller and purple.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ Ablation ============================ -->
+<section class="section" id="ablation">
+  <div class="wrap">
+    <h2 class="headline">Flow objectives pay off <span>where demonstrations are sparse.</span></h2>
+    <p class="lead">Nested objective sets, everything else fixed. Every variant deploys as the same direct policy with no flow input.</p>
+  </div>
+
+  <div class="wrap wide ablation">
+    <div class="ablation-controls">
+      <div class="set-buttons" role="group" aria-label="Objective set">
+        <!-- 由 main.js 按 OBJECTIVE_SETS 生成 -->
+      </div>
+      <div class="mini-grid" id="mini-grid" aria-hidden="true"></div>
+      <p class="set-caption" id="set-caption"></p>
+    </div>
+    <div class="chart-block">
+      <h3 class="chart-title">Real-robot success rate (%) by objective set</h3>
+      <div class="dots" id="ablation-dots" role="img" aria-labelledby="set-caption"></div>
+    </div>
+  </div>
+
+  <div class="wrap wide split split-coverage">
+    <div class="prose">
+      <p>On chili transfer, 4 of the 6 failures of policy-only training fall in the sideways 90° group. In that group, policy-only training succeeds in 20% of trials, while the full ten-objective grid succeeds in 80%.</p>
+      <p>The gap is rooted in the training data, which is not balanced: most chili grasps cluster near the lengthwise placement, and few pens start near the edge of their region. Therefore, the full ten-objective grid, with 3D flow as both a target and a condition, holds up better where demonstrations are sparse.</p>
+    </div>
+    <div class="coverage">
+      <figure class="figure">
+        <img src="assets/img/coverage-chili.png" alt="Histogram of demonstrated chili orientations: 6, 16, 11, 35, 22 and 10 percent from minus 90 to 60 degrees" loading="lazy" width="900" height="727">
+        <figcaption>Share of chili demonstrations at each angle: 0° is lengthwise, ±90° sideways.</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="assets/img/coverage-pen.png" alt="Top camera view with the region of initial pen positions in red and its sparse boundary band in blue" loading="lazy" width="900" height="727">
+        <figcaption>Initial pen positions in the top camera. The red box spans all 49 demonstrations; the blue band is its boundary, where demonstrations are sparse.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ Citation ============================ -->
+<section class="section" id="cite">
+  <div class="wrap">
+    <h2 class="headline">Cite</h2>
+    <p class="lead">The arXiv identifier will be added when the paper is released.</p>
+    <div class="bibtex">
+      <button type="button" class="copy" id="copy-bibtex">Copy BibTeX</button>
+<pre id="bibtex-text"><code>@article{tian2026uniflowwam,
+  title   = {UniFlowWAM: A Unified World--Action Model with Visual Semantics and 4D Geometry},
+  author  = {Tian, Jialin and Li, Zhuofan and Wang, Xinkai and Lin, Bokai and
+             Wang, Chenyi and Zhan, Xinyu and Lu, Cewu and Yang, Lixin},
+  year    = {2026}
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap wide footer-inner">
+    <span>UniFlowWAM · MVIG@SJTU · Shanghai Innovation Institute · Noematrix</span>
+    <a href="#top">Back to top</a>
+  </div>
+</footer>
+
+<script src="assets/js/main.js" defer></script>
+</body>
+</html>
